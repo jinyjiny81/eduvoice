@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>에듀보이스 (EduVoice) - 체육과 과정평가</title>
+  <style>
+    :root {
+      --primary: #2563eb;
+      --primary-dark: #1d4ed8;
+      --bg: #f8fafc;
+      --card-bg: #ffffff;
+      --text: #0f172a;
+      --gray: #64748b;
+      --light-gray: #e2e8f0;
+      --success: #16a34a;
+      --warning: #ca8a04;
+      --danger: #dc2626;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; -webkit-tap-highlight-color: transparent; }
+    body { background-color: var(--bg); color: var(--text); padding-bottom: 140px; }
+
+    header { background: var(--primary); color: white; padding: 16px; text-align: center; position: sticky; top: 0; z-index: 10; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+    header h1 { font-size: 1.2rem; font-weight: 700; }
+    header p { font-size: 0.8rem; opacity: 0.9; margin-top: 4px; }
+
+    .settings-bar { background: #eff6ff; padding: 10px 16px; border-bottom: 1px solid var(--light-gray); display: flex; gap: 8px; align-items: center; justify-content: space-between; font-size: 0.85rem; }
+    .settings-bar input { flex: 1; padding: 6px 10px; border: 1px solid var(--light-gray); border-radius: 6px; font-size: 0.8rem; }
+
+    .section-title { font-size: 0.9rem; font-weight: 600; color: var(--gray); padding: 12px 16px 6px; display: flex; justify-content: space-between; align-items: center; }
+    .student-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; padding: 0 16px; }
+    .student-card { background: var(--card-bg); border: 2px solid var(--light-gray); border-radius: 8px; padding: 10px 4px; text-align: center; cursor: pointer; transition: all 0.2s; position: relative; }
+    .student-card.active { border-color: var(--primary); background-color: #eff6ff; }
+    .student-card.evaluated { border-color: var(--success); background-color: #f0fdf4; }
+    .student-card .num { font-size: 0.75rem; color: var(--gray); font-weight: 600; }
+    .student-card .name { font-size: 0.85rem; font-weight: 700; margin-top: 2px; }
+    .student-card .badge { position: absolute; top: -4px; right: -4px; width: 14px; height: 14px; background: var(--success); color: white; border-radius: 50%; font-size: 0.6rem; display: flex; align-items: center; justify-content: center; font-weight: bold; }
+
+    .eval-container { padding: 16px; }
+    .eval-card { background: var(--card-bg); border-radius: 12px; padding: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); border: 1px solid var(--light-gray); }
+    .eval-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+    .eval-title { font-weight: 700; font-size: 1.1rem; }
+    .level-badge { padding: 4px 10px; border-radius: 12px; font-size: 0.8rem; font-weight: 700; }
+    .level-상 { background: #dcfce7; color: #15803d; }
+    .level-중 { background: #fef9c3; color: #a16207; }
+    .level-하 { background: #fee2e2; color: #b91c1c; }
+    .level-미평가 { background: #f1f5f9; color: #64748b; }
+
+    .raw-text { font-size: 0.85rem; color: var(--gray); background: #f1f5f9; padding: 8px 12px; border-radius: 6px; margin-bottom: 12px; font-style: italic; }
+    .neis-text { font-size: 0.95rem; line-height: 1.5; color: var(--text); font-weight: 500; min-height: 60px; }
+
+    .voice-control-panel { position: fixed; bottom: 0; left: 0; right: 0; background: var(--card-bg); border-top: 1px solid var(--light-gray); padding: 12px 16px; box-shadow: 0 -4px 12px rgba(0,0,0,0.08); display: flex; flex-direction: column; align-items: center; gap: 8px; z-index: 100; }
+    .recording-status { font-size: 0.8rem; font-weight: 600; color: var(--gray); height: 18px; }
+    .record-btn { width: 100%; max-width: 400px; height: 54px; border-radius: 27px; border: none; background: var(--primary); color: white; font-size: 1.1rem; font-weight: 700; display: flex; align-items: center; justify-content: center; gap: 8px; box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3); cursor: pointer; transition: all 0.2s; }
+    .record-btn:active { transform: scale(0.98); }
+    .record-btn.recording { background: var(--danger); animation: pulse 1.5s infinite; }
+
+    @keyframes pulse {
+      0% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.6); }
+      70% { box-shadow: 0 0 0 15px rgba(220, 38, 38, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0); }
+    }
+
+    .action-btns { display: flex; gap: 8px; width: 100%; max-width: 400px; }
+    .btn-secondary { flex: 1; padding: 10px; border: 1px solid var(--light-gray); background: var(--card-bg); border-radius: 8px; font-size: 0.85rem; font-weight: 600; color: var(--text); cursor: pointer; text-align: center; }
+
+    .modal { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 200; align-items: center; justify-content: center; padding: 16px; }
+    .modal.active { display: flex; }
+    .modal-content { background: white; border-radius: 12px; width: 100%; max-width: 500px; max-height: 80vh; overflow-y: auto; padding: 20px; }
+    .modal-content h2 { font-size: 1.1rem; margin-bottom: 12px; }
+    .modal-content textarea { width: 100%; height: 250px; font-family: monospace; font-size: 0.8rem; padding: 10px; border-radius: 6px; border: 1px solid var(--light-gray); }
+  </style>
+</head>
+<body>
+
+  <header>
+    <h1>에듀보이스 (EduVoice)</h1>
+    <p>3학년 1학기 체육: [4체02-03] 공 던지기 및 잡기</p>
+  </header>
+
+  <div class="settings-bar">
+    <span>Gemini API 키 (선택):</span>
+    <input type="password" id="apiKeyInput" placeholder="미입력 시 내장 모의 AI 동작" onchange="saveApiKey()">
+  </div>
+
+  <div class="section-title">
+    <span>학생 목록 (25명)</span>
+    <span id="evalCount" style="color: var(--primary);">완료: 0 / 25</span>
+  </div>
+
+  <div class="student-grid" id="studentGrid"></div>
+
+  <div class="eval-container">
+    <div class="eval-card">
+      <div class="eval-header">
+        <span class="eval-title" id="selectedStudentTitle">학생을 선택하세요</span>
+        <span class="level-badge level-미평가" id="selectedLevelBadge">미평가</span>
+      </div>
+      <div class="raw-text" id="selectedRawText">마이크 버튼을 누르고 음성으로 관찰 내용을 입력하세요.</div>
+      <div class="neis-text" id="selectedNeisText">예시: "5번 정OO 공 던지는 자세 우수하고 동료를 잘 격려함"</div>
+    </div>
+  </div>
+
+  <div class="voice-control-panel">
+    <div class="recording-status" id="recordingStatus">버튼을 눌러 음성 평가 시작</div>
+    <button class="record-btn" id="recordBtn" onclick="toggleRecording()">
+      <span id="micIcon">🎙️</span> <span id="recordBtnText">음성 평가 입력</span>
+    </button>
+    <div class="action-btns">
+      <button class="btn-secondary" onclick="exportNEIS()">NEIS 문구 복사</button>
+      <button class="btn-secondary" onclick="exportCSV()">CSV 다운로드</button>
+      <button class="btn-secondary" onclick="resetData()" style="color:var(--danger)">초기화</button>
+    </div>
+  </div>
+
+  <div class="modal" id="neisModal">
+    <div class="modal-content">
+      <h2>나이스(NEIS) 붙여넣기용 결과</h2>
+      <textarea id="neisTextArea" readonly></textarea>
+      <div style="margin-top: 12px; display: flex; gap: 8px;">
+        <button class="btn-secondary" style="background: var(--primary); color: white;" onclick="copyNeisText()">클립보드 전체 복사</button>
+        <button class="btn-secondary" onclick="closeModal()">닫기</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const TOTAL_STUDENTS = 25;
+    let students = Array.from({ length: TOTAL_STUDENTS }, (_, i) => ({
+      id: i + 1,
+      name: `학생 ${i + 1}`,
+      level: '미평가',
+      rawText: '',
+      neisText: '',
+      evaluated: false
+    }));
+
+    let activeStudentId = 1;
+    let isRecording = false;
+    let recognition = null;
+
+    function loadSavedData() {
+      const savedData = localStorage.getItem('eduvoice_data');
+      if (savedData) {
+        students = JSON.parse(savedData);
+      }
+      const savedKey = localStorage.getItem('eduvoice_gemini_key');
+      if (savedKey) {
+        document.getElementById('apiKeyInput').value = savedKey;
+      }
+    }
+
+    function saveData() {
+      localStorage.setItem('eduvoice_data', JSON.stringify(students));
+      updateUI();
+    }
+
+    function saveApiKey() {
+      const key = document.getElementById('apiKeyInput').value.trim();
+      localStorage.setItem('eduvoice_gemini_key', key);
+    }
+
+    function renderGrid() {
+      const grid = document.getElementById('studentGrid');
+      grid.innerHTML = '';
+      let evaluatedCount = 0;
+
+      students.forEach(s => {
+        if (s.evaluated) evaluatedCount++;
+        const card = document.createElement('div');
+        card.className = `student-card ${s.id === activeStudentId ? 'active' : ''} ${s.evaluated ? 'evaluated' : ''}`;
+        card.onclick = () => selectStudent(s.id);
+        card.innerHTML = `
+          <div class="num">${s.id}번</div>
+          <div class="name">${s.name}</div>
+          ${s.evaluated ? '<div class="badge">✓</div>' : ''}
+        `;
+        grid.appendChild(card);
+      });
+
+      document.getElementById('evalCount').innerText = `완료: ${evaluatedCount} / ${TOTAL_STUDENTS}`;
+    }
+
+    function selectStudent(id) {
+      activeStudentId = id;
+      renderGrid();
+      const s = students.find(item => item.id === activeStudentId);
+      document.getElementById('selectedStudentTitle').innerText = `${s.id}번 ${s.name}`;
+      
+      const badge = document.getElementById('selectedLevelBadge');
+      badge.innerText = s.level;
+      badge.className = `level-badge level-${s.level}`;
+
+      document.getElementById('selectedRawText').innerText = s.rawText || '음성 인식 결과가 여기에 표시됩니다.';
+      document.getElementById('selectedNeisText').innerText = s.neisText || '나이스 기재용 최종 문장이 여기에 생성됩니다.';
+    }
+
+    function updateUI() {
+      renderGrid();
+      selectStudent(activeStudentId);
+    }
+
+    function initSpeech() {
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (!SpeechRecognition) {
+        alert('이 브라우저는 음성 인식을 지원하지 않습니다. Chrome 또는 Safari를 사용해주세요.');
+        return;
+      }
+      recognition = new SpeechRecognition();
+      recognition.lang = 'ko-KR';
+      recognition.continuous = false;
+      recognition.interimResults = false;
+
+      recognition.onstart = () => {
+        isRecording = true;
+        triggerHaptic([50]);
+        document.getElementById('recordBtn').classList.add('recording');
+        document.getElementById('recordBtnText').innerText = '음성 인식 중... (터치 시 종료)';
+        document.getElementById('recordingStatus').innerText = '🎙️ 들리는 내용을 말하세요... (예: "3번 잡기 자세 우수함")';
+      };
+
+      recognition.onresult = async (event) => {
+        const transcript = event.results[0][0].transcript;
+        triggerHaptic([100, 50, 100]);
+        await processVoiceText(transcript);
+      };
+
+      recognition.onerror = (event) => {
+        console.error('Speech error:', event.error);
+        stopRecording();
+        document.getElementById('recordingStatus').innerText = '음성 인식 오류가 발생했습니다. 다시 시도해주세요.';
+      };
+
+      recognition.onend = () => {
+        stopRecording();
+      };
+    }
+
+    function toggleRecording() {
+      if (!recognition) initSpeech();
+      if (!recognition) return;
+
+      if (isRecording) {
+        recognition.stop();
+      } else {
+        recognition.start();
+      }
+    }
+
+    function stopRecording() {
+      isRecording = false;
+      document.getElementById('recordBtn').classList.remove('recording');
+      document.getElementById('recordBtnText').innerText = '음성 평가 입력';
+      document.getElementById('recordingStatus').innerText = '버튼을 눌러 음성 평가 시작';
+    }
+
+    function triggerHaptic(pattern) {
+      if (navigator.vibrate) {
+        navigator.vibrate(pattern);
+      }
+    }
+
+    async function processVoiceText(rawText) {
+      document.getElementById('selectedRawText').innerText = `인식된 음성: "${rawText}"`;
+      document.getElementById('selectedNeisText').innerText = 'AI 문장 정제 중...';
+
+      const numberMatch = rawText.match(/(\d{1,2})\s*번/);
+      let targetStudentId = activeStudentId;
+      if (numberMatch && numberMatch[1]) {
+        const num = parseInt(numberMatch[1]);
+        if (num >= 1 && num <= TOTAL_STUDENTS) {
+          targetStudentId = num;
+          selectStudent(targetStudentId);
+        }
+      }
+
+      const apiKey = localStorage.getItem('eduvoice_gemini_key');
+      let result = null;
+
+      if (apiKey) {
+        result = await callGeminiAPI(apiKey, rawText);
+      } 
+      
+      if (!result) {
+        result = runMockAIEngine(rawText);
+      }
+
+      const student = students.find(s => s.id === targetStudentId);
+      student.rawText = rawText;
+      student.level = result.level;
+      student.neisText = result.neisText;
+      student.evaluated = true;
+
+      saveData();
+      
+      if (activeStudentId < TOTAL_STUDENTS) {
+        setTimeout(() => {
+          selectStudent(activeStudentId + 1);
+        }, 1200);
+      }
+    }
+
+    function runMockAIEngine(text) {
+      let level = '중';
+      if (text.includes('우수') || text.includes('완벽') || text.includes('잘함') || text.includes('상') || text.includes('격려')) {
+        level = '상';
+      } else if (text.includes('서툼') || text.includes('못함') || text.includes('보충') || text.includes('하') || text.includes('놓침')) {
+        level = '하';
+      }
+
+      let neisText = '';
+      if (level === '상') {
+        neisText = `공을 던지고 잡는 기본 조작 움직임 동작을 정확한 자세로 안정적으로 수행하며, 모둠 활동 시 동료와 협력하는 태도가 우수함. (${text})`;
+      } else if (level === '중') {
+        neisText = `공을 던지고 받는 기본 움직임을 시도하며, 수업 활동 규칙을 준수하고 적극적으로 참여함. (${text})`;
+      } else {
+        neisText = `공을 던지거나 받는 동작에 지속적인 연습과 보충 지도가 필요하나, 포기하지 않고 끝까지 시도하는 태도를 보임. (${text})`;
+      }
+
+      return { level, neisText };
+    }
+
+    async function callGeminiAPI(apiKey, rawText) {
+      try {
+        const prompt = `초등학교 3학년 체육과 수행평가(성취기준: [4체02-03] 공 던지기 및 잡기)입니다. 교사의 음성 메모: "${rawText}". 
+        이를 바탕으로 JSON 포맷으로 답하세요:
+        {"level": "상"|"중"|"하", "neisText": "나이스 기재용 최종 문장 (~함,~임 문체, 100자 이내)"}`;
+
+        const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: prompt }] }],
+            generationConfig: { responseMimeType: "application/json" }
+          })
+        });
+
+        const data = await res.json();
+        const jsonStr = data.candidates[0].content.parts[0].text;
+        return JSON.parse(jsonStr);
+      } catch (err) {
+        console.error('Gemini API Error:', err);
+        return null;
+      }
+    }
+
+    function exportNEIS() {
+      let resultStr = "번호\t성명\t성취수준\t나이스 세부능력 및 특기사항\n";
+      students.forEach(s => {
+        resultStr += `${s.id}\t${s.name}\t${s.level}\t${s.neisText || '-'}\n`;
+      });
+      document.getElementById('neisTextArea').value = resultStr;
+      document.getElementById('neisModal').classList.add('active');
+    }
+
+    function copyNeisText() {
+      const area = document.getElementById('neisTextArea');
+      area.select();
+      document.execCommand('copy');
+      alert('클립보드에 복사되었습니다! 나이스(NEIS) 또는 엑셀에 붙여넣으세요.');
+    }
+
+    function closeModal() {
+      document.getElementById('neisModal').classList.remove('active');
+    }
+
+    function exportCSV() {
+      let csvStr = "\uFEFF번호,성명,성취수준,음성인식원문,나이스기재문구\n";
+      students.forEach(s => {
+        csvStr += `${s.id},"${s.name}","${s.level}","${s.rawText.replace(/"/g, '""')}","${s.neisText.replace(/"/g, '""')}"\n`;
+      });
+      const blob = new Blob([csvStr], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `3학년_체육_과정평가_${new Date().toISOString().slice(0,10)}.csv`;
+      a.click();
+    }
+
+    function resetData() {
+      if (confirm('모든 평가 기록을 초기화하시겠습니까?')) {
+        localStorage.removeItem('eduvoice_data');
+        location.reload();
+      }
+    }
+
+    window.onload = () => {
+      loadSavedData();
+      updateUI();
+      initSpeech();
+    };
+  </script>
+</body>
+</html>
